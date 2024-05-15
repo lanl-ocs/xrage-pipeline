@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Triad National Security, LLC, as operator of Los Alamos
+ * Copyright (c) 2024 Triad National Security, LLC, as operator of Los Alamos
  * National Laboratory with the U.S. Department of Energy/National Nuclear
  * Security Administration. All Rights Reserved.
  *
@@ -33,83 +33,70 @@
  */
 
 #include <vtkActor.h>
-#include <vtkCellData.h>
-#include <vtkCellDataToPointData.h>
-#include <vtkCompositePolyDataMapper.h>
-#include <vtkContourFilter.h>
 #include <vtkDataArraySelection.h>
-#include <vtkFloatArray.h>
-#include <vtkNamedColors.h>
+#include <vtkDataSetMapper.h>
+#include <vtkFixedPointVolumeRayCastMapper.h>
+#include <vtkImageData.h>
+// #include <vtkNamedColors.h>
 #include <vtkNew.h>
 #include <vtkPNGWriter.h>
-#include <vtkPolyDataMapper.h>
+#include <vtkPointData.h>
 #include <vtkProperty.h>
 #include <vtkRenderWindow.h>
+#include <vtkRenderWindowInteractor.h>
 #include <vtkRenderer.h>
-#include <vtkUnstructuredGrid.h>
+#include <vtkVolume.h>
 #include <vtkWindowToImageFilter.h>
-#include <vtkXMLMultiBlockDataReader.h>
+#include <vtkXMLImageDataReader.h>
 
 #include <stdio.h>
 
 void Run(const char *filename) {
   printf("Loading %s ... \n", filename);
-  vtkNew<vtkXMLMultiBlockDataReader> reader;
+  vtkNew<vtkXMLImageDataReader> reader;
   reader->SetFileName(filename);
   reader->UpdateInformation();
   reader->GetCellDataArraySelection()->DisableAllArrays();
   reader->GetCellDataArraySelection()->EnableArray("v02");
-  vtkNew<vtkCellDataToPointData> f1;
-  f1->SetInputConnection(reader->GetOutputPort());
-  f1->UpdateInformation();
-  f1->ProcessAllArraysOff();
-  f1->AddCellDataArray("v02");
-  vtkNew<vtkContourFilter> f2;
-  f2->SetInputConnection(f1->GetOutputPort());
-  f2->SetInputArrayToProcess(0, 0, 0, vtkDataObject::FIELD_ASSOCIATION_POINTS,
-                             "v02");
-  f2->SetNumberOfContours(10);
-  f2->SetValue(0, 1e-6);
-  f2->SetValue(1, 4.641588833612782e-06);
-  f2->SetValue(2, 2.1544346900318823e-05);
-  f2->SetValue(3, 0.0001);
-  f2->SetValue(4, 0.00046415888336127773);
-  f2->SetValue(5, 0.002154434690031882);
-  f2->SetValue(6, 0.01);
-  f2->SetValue(7, 0.046415888336127725);
-  f2->SetValue(8, 0.21544346900318823);
-  f2->SetValue(9, 1);
+  reader->Update();
+  vtkImageData *image = reader->GetOutput();
+  vtkPointData *pointData = image->GetPointData();
+  pointData->SetActiveScalars("v02");
 
-  vtkNew<vtkCompositePolyDataMapper> mapper;
-  mapper->SetInputConnection(f2->GetOutputPort());
-  // mapper->ScalarVisibilityOff();
-
+  vtkNew<vtkDataSetMapper> mapper;
+  mapper->SetInputData(image);
   vtkNew<vtkActor> actor;
   actor->SetMapper(mapper);
-
-  vtkNew<vtkNamedColors> colors;
-  actor->GetProperty()->SetColor(colors->GetColor3d("Peacock").GetData());
-  actor->GetProperty()->EdgeVisibilityOn();
+  actor->GetProperty()->SetRepresentationToSurface();
+#if 0
+  vtkNew<vtkFixedPointVolumeRayCastMapper> mapper;
+  mapper->SetInputConnection(reader->GetOutputPort());
+  mapper->SetInputArrayToProcess(
+      0, 0, 0, vtkDataObject::FieldAssociations::FIELD_ASSOCIATION_POINTS,
+      "v02");
+  vtkNew<vtkVolume> volume;
+  volume->SetMapper(mapper);
+#endif
 
   vtkNew<vtkRenderer> renderer;
   renderer->AddActor(actor);
-  renderer->SetBackground(colors->GetColor3d("Beige").GetData());
   renderer->ResetCamera();
-
   vtkNew<vtkRenderWindow> win;
   win->AddRenderer(renderer);
   win->SetSize(1024, 764);
+  win->SetOffScreenRendering(true);
   win->SetWindowName("XX");
-  win->Render();
 
-  vtkNew<vtkWindowToImageFilter> image;
-  image->SetInput(win);
-  image->Update();
-
+  vtkNew<vtkWindowToImageFilter> screenshot;
+  screenshot->SetInput(win);
   vtkNew<vtkPNGWriter> png;
   png->SetFileName("output.png");
-  png->SetInputConnection(image->GetOutputPort());
+  png->SetInputConnection(screenshot->GetOutputPort());
   png->Write();
+
+  //  vtkNew<vtkRenderWindowInteractor> iren;
+  //  iren->SetRenderWindow(win);
+  // iren->Start();
 }
 
 int main(int argc, char *argv[]) {

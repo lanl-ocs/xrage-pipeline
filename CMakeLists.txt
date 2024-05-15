@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Triad National Security, LLC, as operator of Los Alamos
+# Copyright (c) 2024 Triad National Security, LLC, as operator of Los Alamos
 # National Laboratory with the U.S. Department of Energy/National Nuclear
 # Security Administration. All Rights Reserved.
 #
@@ -32,27 +32,28 @@
 
 # VTK requires CMake 3.12 in order to reliably be used.
 cmake_minimum_required(VERSION 3.12)
-project(xrange-format C CXX)
+project(xrange-pipeline C CXX)
 
 find_package(VTK COMPONENTS
         CommonColor
         CommonCore
         CommonDataModel
-        FiltersCore
-        FiltersGeometry
         IOXML
+        IOImage
         InteractionStyle
         RenderingContextOpenGL2
         RenderingCore
         RenderingFreeType
         RenderingGL2PSOpenGL2
         RenderingOpenGL2
+        RenderingVolume
+        RenderingVolumeOpenGL2
 )
 if (NOT VTK_FOUND)
     message(FATAL_ERROR "Unable to locate VTK")
 endif ()
 
-add_executable(pipeline pipeline.cxx)
+add_executable(pipeline pipeline_runner.cxx)
 target_link_libraries(pipeline PRIVATE ${VTK_LIBRARIES})
 vtk_module_autoinit(TARGETS pipeline
         MODULES ${VTK_LIBRARIES}
